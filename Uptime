@@ -1,0 +1,51 @@
+# Get system boot time and calculate uptime in days
+$LastBootUpTime = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+$Uptime = (Get-Date) - $LastBootUpTime
+$UptimeDays = $Uptime.Days
+
+# Check if scheduled task exists
+$existingTask = schtasks.exe /Query /TN "Routine Reboot" /V /FO LIST 2>$null
+
+if ($existingTask) {
+    if ($UptimeDays -gt 5) {
+        Write-Host "<-Start Result->"
+        Write-Host "STATUS=EXCEEDED $UptimeDays"
+        Write-Host "<-End Result->"
+        exit 0
+    } else {
+        # Uptime is 5 days or less; remove the reboot task
+        schtasks.exe /Delete /TN "Routine Reboot" /F | Out-Null
+        if (-not ($?)) {
+            Write-Host "<-Start Result->"
+            Write-Host "STATUS=COMP ERR"
+            Write-Host "<-End Result->"
+            exit 1
+        } else {
+            Write-Host "<-Start Result->"
+            Write-Host "STATUS=$UptimeDays"
+            Write-Host "<-End Result->"
+            exit 0
+        }
+    }
+} else {
+    if ($UptimeDays -gt 5) {
+        # Uptime exceeds 5 days; schedule reboot at 23:30
+        schtasks.exe /Create /SC ONCE /TN "Routine Reboot" /TR "shutdown /r /f /t 0" /ST 23:30 /RU "SYSTEM" /F | Out-Null
+        if (-not ($?)) {
+            Write-Host "<-Start Result->"
+            Write-Host "STATUS=COMP ERR"
+            Write-Host "<-End Result->"
+            exit 1
+        } else {
+            Write-Host "<-Start Result->"
+            Write-Host "STATUS=EXCEEDED $UptimeDays"
+            Write-Host "<-End Result->"
+            exit 0
+        }
+    } else {
+        Write-Host "<-Start Result->"
+        Write-Host "STATUS=$UptimeDays"
+        Write-Host "<-End Result->"
+        exit 0
+    }
+}
