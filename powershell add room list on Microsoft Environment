@@ -1,0 +1,13 @@
+New-DistributionGroup -Name "Main Facility Building" -RoomList
+Add-DistributionGroupMember -Identity "Main Facility Building" -Member KA-DC-MR4-Victor@keolis.au
+Add-DistributionGroupMember -Identity "Main Facility Building" -Member KA-DC-MR5-Elliot@keolis.au
+Add-DistributionGroupMember -Identity "Main Facility Building" -Member KA-DC-Middleton@keolis.au
+
+
+New-DistributionGroup -Name "ROC Building" -RoomList
+Add-DistributionGroupMember -Identity "ROC Building" -Member KA-DC-MeetingRoom1@keolis.au
+Add-DistributionGroupMember -Identity "ROC Building" -Member KA-DC-MR1-Boardroom@keolis.au
+Add-DistributionGroupMember -Identity "ROC Building" -Member KA-DC-MR2-Strathalbyn@keolis.au
+Add-DistributionGroupMember -Identity "ROC Building" -Member KA-Clyde@keolis.au
+Add-DistributionGroupMember -Identity "ROC Building" -Member KA-Franco@keolis.au
+Add-DistributionGroupMember -Identity "ROC Building" -Member KA-DC-MeetingRoom1@keolis.au
