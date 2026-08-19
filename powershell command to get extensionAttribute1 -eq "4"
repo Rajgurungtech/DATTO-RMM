@@ -1,0 +1,6 @@
+Get-ADUser -Filter 'extensionAttribute1 -eq "4"' `
+           -SearchBase "OU=Standards,OU=Users,OU=KDA,DC=kda,DC=intranet" `
+           -Properties Name, SamAccountName, UserPrincipalName, Description, employeeNumber, Manager, extensionAttribute1 |
+    Where-Object { $_.DistinguishedName -notlike "*OU=Disabled Users,OU=Standards,OU=Users,OU=KDA,DC=kda,DC=intranet" } |
+    Select-Object Name, SamAccountName, UserPrincipalName, Description, employeeNumber, Manager, extensionAttribute1 |
+    Format-Table -AutoSize
