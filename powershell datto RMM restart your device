@@ -1,0 +1,45 @@
+# 1. Define the destination path
+
+$destinationPath = "C:\Users\Public\Documents"
+
+$fileName = "Device not restarted for more than 14 days.ps1"
+
+$fullPath = Join-Path $destinationPath $fileName
+
+ 
+
+# 2. Ensure the destination directory exists
+
+if (-not (Test-Path $destinationPath)) {
+
+    New-Item -ItemType Directory -Path $destinationPath -Force
+
+}
+
+ 
+
+# 3. Copy the file from the local working directory to the destination
+
+# Datto RMM downloads 'Component Files' to the current working directory
+
+if (Test-Path $fileName) {
+
+    Copy-Item -Path $fileName -Destination $fullPath -Force
+
+    Write-Host "Success: $fileName has been copied to $destinationPath"
+
+} else {
+
+    Write-Error "Error: $fileName not found in the package. Make sure it is uploaded as a Component File."
+
+    exit 1
+
+}
+
+ 
+
+# 4. Automatically execute the PowerShell script
+
+# This runs the copied script in a new process and waits for completion
+
+Start-Process "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$fullPath`"" -Wait
