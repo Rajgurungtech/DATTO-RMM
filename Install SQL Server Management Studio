@@ -1,0 +1,64 @@
+# Set installation paths and filenames
+$DownloadPath = "$env:TEMP\SSMSInstaller"
+$InstallerName = "vs_SSMS.exe"
+$InstallerURL = "https://aka.ms/ssms/22/release/vs_SSMS.exe" # The link provided by the user
+
+# --- 1. Create Download Directory ---
+Write-Host "Creating download directory: $DownloadPath"
+try {
+    if (-not (Test-Path -Path $DownloadPath)) {
+        New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null
+    }
+} catch {
+    Write-Error "Failed to create directory: $DownloadPath - $_"
+    exit 1
+}
+
+# --- 2. Download SQL Server Management Studio (SSMS) Installer ---
+$FilePath = Join-Path -Path $DownloadPath -ChildPath $InstallerName
+Write-Host "Downloading SSMS installer from $InstallerURL to $FilePath"
+
+try {
+    # Use Invoke-WebRequest for the download
+    Invoke-WebRequest -Uri $InstallerURL -OutFile $FilePath -MaximumRedirection 10
+
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Error "SSMS Installer file not found after download."
+        exit 1
+    }
+} catch {
+    Write-Error "Download failed: $_"
+    exit 1
+}
+
+# --- 3. Execute the Silent Installation ---
+# Command-line Arguments for fully silent install (no UI, no restart)
+# --quiet: Performs a non-interactive installation (no prompts).
+# --wait: Instructs the script to wait until the process is finished.
+# --norestart: Suppresses any automatic restart.
+$Arguments = "--quiet --wait --norestart"
+
+Write-Host "Starting silent SSMS installation..."
+
+try {
+    # Start the process and wait for it to complete.
+    # Note: This step requires elevated permissions (run as Admin/System in RMM) and can take several minutes.
+    $Process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
+    
+    if ($Process.ExitCode -ne 0) {
+        Write-Error "SSMS Installation finished with non-zero Exit Code: $($Process.ExitCode)"
+        # Note: A non-zero exit code here often indicates a failure.
+        exit 1
+    }
+} catch {
+    Write-Error "Failed to run the SSMS Installer: $_"
+    exit 1
+}
+
+Write-Host "SQL Server Management Studio installation complete."
+
+# --- Clean-up (Optional) ---
+# Clean up the downloaded bootstrapper and its directory
+Remove-Item -Path $DownloadPath -Recurse -Force
+
+exit 0
