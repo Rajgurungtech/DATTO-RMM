@@ -1,0 +1,32 @@
+# 1. Define the destination path and file name
+$destinationPath = "C:\Users\Public\Documents\Installer"
+$fileName = "FortiClientVPNOnlineInstaller.exe"
+$fullPath = Join-Path $destinationPath $fileName
+
+# 2. Ensure the destination directory exists
+if (-not (Test-Path $destinationPath)) {
+    New-Item -ItemType Directory -Path $destinationPath -Force
+}
+
+# 3. Copy the file from the local working directory
+if (Test-Path $fileName) {
+    Copy-Item -Path $fileName -Destination $fullPath -Force
+    Write-Host "Success: $fileName copied to $destinationPath"
+} else {
+    Write-Error "Error: $fileName not found. Check Datto RMM Component Files."
+    exit 1
+}
+
+# 4. Execute the Online Installer
+# Note: /quiet /install are the standard silent triggers for this executable
+Write-Host "Starting Online Download and Installation. This may take a few minutes..."
+
+$installProcess = Start-Process -FilePath $fullPath -ArgumentList "/quiet", "/install", "/norestart" -Wait -PassThru
+
+# 5. Check the result
+if ($installProcess.ExitCode -eq 0 -or $installProcess.ExitCode -eq 3010) {
+    Write-Host "Success: FortiClient VPN has been installed."
+} else {
+    Write-Error "Error: Installation failed with exit code $($installProcess.ExitCode). Check internet connectivity."
+    exit 1
+}
