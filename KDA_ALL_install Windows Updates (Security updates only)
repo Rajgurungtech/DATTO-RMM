@@ -1,0 +1,51 @@
+# Function to install Windows Updates (Security updates only)
+function InstallWindowsUpdate {
+    param (
+        [bool]$RebootIfRequired = $false
+    )
+
+    # Reset global variables for error handling
+    $global:ErrorLevel = 0
+    $global:ErrorMessage = ""
+
+    try {
+        $session = New-Object -ComObject Microsoft.Update.Session
+        $updater = $session.CreateUpdateInstaller()
+        $searcher = $session.CreateUpdateSearcher()
+        $searchResults = $searcher.Search("IsInstalled=0 AND Type='Software' AND IsHidden=0")
+
+        $updatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl
+        foreach ($update in $searchResults.Updates) {
+            $updatesToInstall.Add($update)
+            Write-Log -Message "[InstallWinUpdate] Found update $update"
+        }
+
+        if ($updatesToInstall.Count -eq 0) {
+            $global:ErrorLevel = 0  # No updates to install
+            Write-Log -Message "[InstallWinUpdate] Found $updatesToInstall updates to install."
+            return "No updates available for installation."
+        } else {
+            Write-Log -Message "[InstallWinUpdate] Found $updatesToInstall updates to install."
+            $updater.Updates = $updatesToInstall
+            $result = $updater.Install()
+            
+            if ($result.ResultCode -eq 2) {
+                $global:ErrorLevel = 0  # Success
+                if ($RebootIfRequired -and $result.RebootRequired) {
+                    Write-Log -Message "[InstallWinUpdate] Updates installed, and automatic restart has been enabled."
+                    Restart-Computer -Force
+                }
+                Write-Log -Message "[InstallWinUpdate] Updates installed, however automatic restart has been prohibited."
+            } else {
+                $global:ErrorLevel = 1  # Installation failed
+                $global:ErrorMessage = "Failed to install updates."
+
+                Write-Log -Message "[InstallWinUpdate] Failed to install updates." -Type "ERRPR"
+            }
+        }
+    } catch {
+        $global:ErrorLevel = 1  # Error occurred
+        $global:ErrorMessage = $_.Exception.Message
+        Write-Log -Message "[InstallWinUpdate] ERROR `"$_.Exception.Message`"" -Type "ERROR"
+    }
+}
