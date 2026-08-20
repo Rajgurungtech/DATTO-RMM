@@ -1,0 +1,29 @@
+# --- 1. DEFINE YOUR VARIABLES ---
+# IMPORTANT: Use the exact filename you uploaded to the component.
+$EXEName = "PBIDesktopSetup_x64.exe" 
+
+# --- 2. BUILD THE SILENT COMMAND ---
+# -quiet or -s = Silent installation (No UI)
+# -norestart = Prevent system from automatically rebooting
+# ACCEPT_EULA=1 = Required to accept the license agreement silently
+# LANGUAGE="en-US" = Highly recommended to explicitly set the language
+# INSTALLDESKTOPSHORTCUT=0 = Optional: Set to 0 to prevent a desktop shortcut
+$Arguments = "-quiet -norestart ACCEPT_EULA=1 LANGUAGE=en-US INSTALLDESKTOPSHORTCUT=0"
+
+# --- 3. EXECUTE THE INSTALLATION ---
+Write-Host "Starting silent installation of $EXEName with arguments: $Arguments"
+
+# Start the EXE process and wait for it to finish.
+# -PassThru captures the process object, which we need for the exit code.
+$Process = Start-Process -FilePath $EXEName -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
+
+# --- 4. CHECK THE EXIT CODE ---
+# Exit Code 0 = Success
+# Exit Code 3010 = Success, but a reboot is required (sometimes used by EXE installers too)
+if ($Process.ExitCode -eq 0 -or $Process.ExitCode -eq 3010) {
+    Write-Host "Power BI Desktop installation completed successfully. Exit Code: $($Process.ExitCode)"
+    exit 0 # Component success
+} else {
+    Write-Error "Power BI Desktop installation failed with exit code: $($Process.ExitCode)."
+    exit 1 # Component failure
+}
