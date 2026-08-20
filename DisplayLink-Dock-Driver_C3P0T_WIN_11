@@ -1,0 +1,118 @@
+
+# =====================================================================
+# Download & install DisplayLink Dock Driver (Dell URL) with fallbacks
+# =====================================================================
+
+$DownloadUrl   = "https://dl.dell.com/FOLDER10854294M/4/DisplayLink-Dock-Driver_C3P0T_WIN_11.2.3146.0_A05_01.EXE"
+$TempDir       = Join-Path $env:TEMP "DisplayLinkInstall"
+$InstallerPath = Join-Path $TempDir (Split-Path $DownloadUrl -Leaf)
+
+# --- Prepare environment ---
+$ErrorActionPreference = 'Stop'
+New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+
+# Ensure modern TLS is enabled
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor `
+    [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+
+# Common headers to mimic a browser request (helps with some CDNs)
+$Headers = @{
+    "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36"
+    "Accept"     = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    "Referer"    = "https://www.dell.com/"
+}
+
+function Try-Download {
+    param(
+        [string]$Url,
+        [string]$OutFile
+    )
+    Write-Host "Attempt 1: Invoke-WebRequest with browser headers..."
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $OutFile -Headers $Headers -UseBasicParsing -MaximumRedirection 5 -TimeoutSec 180
+        if (Test-Path $OutFile -PathType Leaf) { return $true }
+    } catch {
+        Write-Warning "Invoke-WebRequest failed: $($_.Exception.Message)"
+    }
+
+    Write-Host "Attempt 2: Start-BitsTransfer..."
+    try {
+        Start-BitsTransfer -Source $Url -Destination $OutFile -DisplayName "DisplayLink-Dock-Driver" -ErrorAction Stop
+        if (Test-Path $OutFile -PathType Leaf) { return $true }
+    } catch {
+        Write-Warning "BITS failed: $($_.Exception.Message)"
+    }
+
+    Write-Host "Attempt 3: curl.exe (follows redirects)..."
+    try {
+        $curl = Join-Path $env:SystemRoot "System32\curl.exe"
+        & $curl -L -o $OutFile $Url
+        if (Test-Path $OutFile -PathType Leaf) { return $true }
+    } catch {
+        Write-Warning "curl.exe failed: $($_.Exception.Message)"
+    }
+
+    return $false
+}
+
+# --- Download with fallbacks ---
+if (-not (Try-Download -Url $DownloadUrl -OutFile $InstallerPath)) {
+    Write-Error "All download methods failed. If this persists:
+    - Try opening the URL in a browser to confirm availability.
+    - Some networks require proxy auth; configure PowerShell's proxy or run behind a browser session.
+    - Dell CDN may block scripted requests intermittently; try again or mirror the file internally."
+    exit 7
+}
+
+Write-Host "Download complete: $InstallerPath"
+
+# --- Optional: quick integrity/size sanity check ---
+$size = (Get-Item $InstallerPath).Length
+if ($size -lt 5MB) {
+    Write-Warning "Downloaded file size ($([math]::Round($size/1MB,2)) MB) looks unusually small. Proceeding anyway..."
+}
+
+# --- Install silently ---
+try {
+    # Most Dell/DisplayLink wrappers accept /quiet /norestart
+    Write-Host "Installing silently..."
+    $proc = Start-Process -FilePath $InstallerPath -ArgumentList "/quiet /norestart" -PassThru -Wait -WindowStyle Hidden
+    if ($proc.ExitCode -ne 0) {
+        Write-Warning "Primary install returned exit code $($proc.ExitCode). Trying fallback switch '/S'..."
+        $proc = Start-Process -FilePath $InstallerPath -ArgumentList "/S" -PassThru -Wait -WindowStyle Hidden
+        if ($proc.ExitCode -ne 0) {
+            throw "Installer failed. Exit code: $($proc.ExitCode)"
+        }
+    }
+    Write-Host "Installation completed successfully."
+} catch {
+    Write-Error "Installation error: $($_.Exception.Message)"
+    exit 4
+}
+
+# --- (Optional) Basic post-install check: registry version ---
+function Get-DisplayLinkVersion {
+    $paths = @(
+        "HKLM:\SOFTWARE\DisplayLink\Core",
+        "HKLM:\SOFTWARE\DisplayLink\Setup",
+        "HKLM:\SOFTWARE\WOW6432Node\DisplayLink\Core",
+        "HKLM:\SOFTWARE\WOW6432Node\DisplayLink\Setup"
+    )
+    foreach ($p in $paths) {
+        try {
+            $v = (Get-ItemProperty -Path $p -ErrorAction Stop).Version
+            if ($v) { return $v }
+        } catch { }
+    }
+    return $null
+}
+
+Start-Sleep -Seconds 5
+$postVersion = Get-DisplayLinkVersion
+if ($postVersion) {
+    Write-Host "Installed DisplayLink version: $postVersion"
+} else {
+    Write-Warning "DisplayLink version not found in registry; the install may still be successful depending on package behavior."
+}
+
+# --- Cleanup ---
