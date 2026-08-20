@@ -1,0 +1,45 @@
+# Run as Administrator
+
+# Step 1: Configure Disk Cleanup options via registry (enable all categories silently)
+$regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches"
+$keys = Get-ChildItem $regPath
+foreach ($key in $keys) {
+    try {
+        Set-ItemProperty -Path $key.PSPath -Name StateFlags0001 -Value 2 -ErrorAction SilentlyContinue
+    } catch {
+        Write-Host "Failed to set cleanup flag for $($key.PSChildName)"
+    }
+}
+
+# Step 2: Run Disk Cleanup silently (no GUI)
+Start-Process -FilePath "cleanmgr.exe" -ArgumentList "/sagerun:1" -Wait
+
+# Step 3: Clean Temp folders
+Write-Host "Cleaning Temp files..."
+Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Step 4: Clean Windows Update cache
+Write-Host "Cleaning Windows Update cache..."
+Stop-Service wuauserv -Force
+Remove-Item -Path "C:\Windows\SoftwareDistribution\Download\*" -Recurse -Force -ErrorAction SilentlyContinue
+Start-Service wuauserv
+
+# Step 5: Clean Prefetch files
+Write-Host "Cleaning Prefetch files..."
+Remove-Item -Path "C:\Windows\Prefetch\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Step 6: Force delete Windows.old if still exists
+$windowsOldPath = "C:\Windows.old"
+if (Test-Path $windowsOldPath) {
+    Write-Host "Windows.old still exists. Taking ownership and deleting..."
+    
+    takeown /F $windowsOldPath /A /R /D Y
+    icacls $windowsOldPath /grant administrators:F /T
+    Remove-Item $windowsOldPath -Recurse -Force
+    Write-Host "Windows.old has been deleted successfully."
+} else {
+    Write-Host "Windows.old folder not found. Cleanup completed."
+}
+
+Write-Host "✅ Full system cleanup completed successfully!"
