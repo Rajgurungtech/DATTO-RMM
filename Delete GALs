@@ -1,0 +1,25 @@
+# Get the currently logged-in user
+$LoggedInUser = Get-CimInstance Win32_ComputerSystem | Select-Object -ExpandProperty UserName
+
+if ($null -ne $LoggedInUser) {
+    # Split the domain from the username (e.g., "DOMAIN\User" to "User")
+    $UserName = $LoggedInUser.Split("\")[-1]
+    $OABPath = "C:\Users\$UserName\AppData\Local\Microsoft\Outlook\Offline Address Books"
+
+    if (Test-Path $OABPath) {
+        Write-Host "Found OAB path for $UserName. Proceeding with deletion..."
+        
+        # Close Outlook if it is running to release file locks
+        Stop-Process -Name "Outlook" -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+
+        # Delete the contents of the OAB folder
+        Remove-Item -Path "$OABPath\*" -Recurse -Force -ErrorAction SilentlyContinue
+        
+        Write-Host "Offline Address Books deleted successfully for $UserName."
+    } else {
+        Write-Warning "OAB path not found for $UserName. Path checked: $OABPath"
+    }
+} else {
+    Write-Error "No user currently logged in. Script cannot target a specific AppData folder."
+}
