@@ -1,0 +1,9 @@
+$OfficeUpdatePath = "C:\Program Files\Common Files\Microsoft Shared\ClickToRun\OfficeC2RClient.exe"
+$Arguments = "/update user"
+ 
+if (Test-Path $OfficeUpdatePath) {
+    Start-Process -FilePath $OfficeUpdatePath -ArgumentList $Arguments -Wait
+    Write-Host "Office update initiated successfully."
+} else {
+    Write-Host "Office Click-to-Run client not found."
+}
