@@ -1,0 +1,3 @@
+Stop-Service -Name lfsvc
+Stop-Service -Name lfsvc -Force
+Set-Service -Name lfsvc -StartupType Disabled
