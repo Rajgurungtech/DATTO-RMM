@@ -1,0 +1,49 @@
+# Define variables
+$ChromeUpdateExe = "C:\Program Files (x86)\Google\Update\GoogleUpdate.exe"
+$RegistryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome"
+$RegistryValueName = "DisplayVersion"
+$ProcedureName = "ChromeUpdateCheck"
+
+# Function to write log entries
+function Write-ProcedureLogEntry {
+    param (
+        [string]$Message,
+        [string]$Status = "All Operating Systems",
+        [string]$Action = "Halt on Fail"
+    )
+    Write-Host "$Message | $Status | $Action"
+}
+
+# Check if Chrome Update EXE exists
+if (Test-Path $ChromeUpdateExe) {
+    Write-ProcedureLogEntry "$ChromeUpdateExe exists"
+    
+    # Check if registry value exists
+    if (Test-Path $RegistryPath) {
+        $RegistryValue = (Get-ItemProperty -Path $RegistryPath -Name $RegistryValueName -ErrorAction SilentlyContinue).$RegistryValueName
+        
+        if ($RegistryValue) {
+            Write-ProcedureLogEntry "Registry value exists: $RegistryValue"
+            
+            # Example condition: Check if value matches expected
+            if ($RegistryValue -eq "118.0.5993.90") {
+                Write-ProcedureLogEntry "Chrome version is correct"
+            } else {
+                Write-ProcedureLogEntry "Chrome version mismatch"
+            }
+        } else {
+            Write-ProcedureLogEntry "Registry value does NOT exist"
+        }
+    } else {
+        Write-ProcedureLogEntry "Registry path does NOT exist"
+    }
+} else {
+    Write-ProcedureLogEntry "$ChromeUpdateExe does NOT exist"
+}
+
+# Additional logic for architecture check
+if ([Environment]::Is64BitOperatingSystem) {
+    Write-ProcedureLogEntry "$ProcedureName is running on 64-bit OS"
+} else {
+    Write-ProcedureLogEntry "$ProcedureName is running on 32-bit OS"
+}
