@@ -1,0 +1,21 @@
+# 1. Calculate Uptime
+$lastBoot = (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime
+$uptime = (Get-Date) - $lastBoot
+
+# 2. Check if Uptime is greater than 14 days
+if ($uptime.TotalDays -gt 14) {
+    
+    $title = "Mandatory Restart Required"
+    $message = "This device has not been restarted for over 14 days. To ensure system stability, it will automatically restart in 30 minutes. Please save all work immediately."
+    
+    # 3. Display Warning to the User
+    $wshell = New-Object -ComObject WScript.Shell
+    $wshell.Popup($message, 0, $title, 0x30 + 0x0)
+
+    # 4. Schedule Restart
+    # /r = restart, /t 7200 = 7200 seconds (30 minutes), /f = force close apps
+    shutdown /r /t 7200 /f /c "Automated restart due to uptime exceeding 14 days."
+}
+else {
+    Write-Host "Uptime is less than 14 days ($([math]::Round($uptime.TotalDays, 2)) days). No restart required."
+}
