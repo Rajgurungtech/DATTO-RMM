@@ -1,0 +1,31 @@
+#to get members on table format 
+
+Get-ADGroupMember -Identity "CN=DL-KA-Managers,OU=Distribution,OU=Groups,OU=KDA,DC=kda,DC=intranet" | 
+    Where-Object {$_.objectClass -eq 'user'} | 
+    Get-ADUser -Properties Title, mail, Department | 
+    Select-Object Name, Title, mail, Department | 
+    Format-Table -AutoSize
+
+
+
+# to get memebers in a grapgical grid window 
+
+Get-ADGroupMember -Identity "CN=DL-KA-Managers,OU=Distribution,OU=Groups,OU=KDA,DC=kda,DC=intranet" | 
+    Where-Object {$_.objectClass -eq 'user'} | 
+    Get-ADUser -Properties Title, mail, Department | 
+    Select-Object Name, Title, mail, Department | 
+    Out-GridView -Title "DL-KA-Managers Members"
+
+#ADSI Method (Console Table Output)
+$group = [ADSI]"LDAP://CN=DL-KA-Managers,OU=Distribution,OU=Groups,OU=KDA,DC=kda,DC=intranet"
+$group.member | ForEach-Object {
+    $user = [ADSI]"LDAP://$_"
+    [PSCustomObject]@{
+        Name       = $user.displayName.Value
+        Title      = $user.title.Value
+        Email      = $user.mail.Value
+        Department = $user.department.Value
+    }
+} | Format-Table -AutoSize
+
+
