@@ -1,0 +1,5 @@
+Get-ADGroupMember -Identity "CN=DL-KA-ALL,OU=Distribution,OU=Groups,OU=KDA,DC=kda,DC=intranet" |
+    Where-Object {$_.objectClass -eq 'user'} |
+    Get-ADUser -Properties Title, mail, Department |
+    Select-Object Name, Title, mail, Department |
+    Format-Table -AutoSize
