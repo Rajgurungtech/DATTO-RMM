@@ -1,0 +1,21 @@
+# Automated PowerShell Script
+
+# Get all user profile folders in C:\Users, excluding Default and Public
+$userProfiles = Get-ChildItem -Path "C:\Users" -Directory | Where-Object { $_.Name -notmatch '^(Public|Default|Default User|All Users)$' }
+
+foreach ($profile in $userProfiles) {
+    $tempPath = Join-Path -Path $profile.FullName -ChildPath "AppData\Local\Temp"
+    
+    if (Test-Path -Path $tempPath) {
+        Write-Host "Cleaning temp files for: $($profile.Name)" -ForegroundColor Cyan
+        # Remove files and folders, suppress errors for files currently in use
+        Remove-Item -Path "$tempPath\*" -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Write-Host "Cleanup complete!" -ForegroundColor Green
+
+  # Command Prompt
+  for /d %i in (C:\Users\*) do del /q /f /s "%i\AppData\Local\Temp\*" & for /d %p in ("%i\AppData\Local\Temp\*") do rmdir /s /q "%p"
+
+  
