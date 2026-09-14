@@ -1,0 +1,35 @@
+Import-Module ActiveDirectory
+
+$TargetOU = "OU=Disabled Users,OU=Standards,OU=Users,OU=KDA,DC=kda,DC=intranet"
+
+# Retrieve all user DistinguishedNames within the specified OU
+$OUUsers = Get-ADUser -SearchBase $TargetOU -Filter * | Select-Object -ExpandProperty DistinguishedName
+
+# Query groups that contain any of these users as members
+$Results = foreach ($UserDN in $OUUsers) {
+    Get-ADUser $UserDN -Properties MemberOf | ForEach-Object {
+        $UserName = $_.SamAccountName
+        $_.MemberOf | ForEach-Object {
+            [PSCustomObject]@{
+                DisabledUser = $UserName
+                GroupMember  = (Get-ADGroup $_).Name
+            }
+        }
+    }
+}
+
+# Display results in console
+$Results | Out-GridView
+
+
+
+# Retrieve all groups located in the target OU
+$Groups = Get-ADGroup -Filter * -SearchBase "OU=Disabled Users,OU=Standards,OU=Users,OU=KDA,DC=kda,DC=intranet"
+
+# Find unique user members across all those groups
+$Groups | ForEach-Object {
+    Get-ADGroupMember -Identity $_.DistinguishedName | Where-Object { $_.objectClass -eq "user" }
+} | Select-Object -Unique Name, SamAccountName, DistinguishedName
+
+
+
