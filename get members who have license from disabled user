@@ -1,0 +1,7 @@
+$OU = "OU=Disabled Users,OU=Standards,OU=Users,OU=KDA,DC=kda,DC=intranet"
+
+Get-ADUser -Filter * -SearchBase $OU -SearchScope OneLevel -Properties memberOf | 
+    Where-Object { 
+        ($_.memberOf -like "*KDA-M365 E3*") -or ($_.memberOf -like "*KDA-M365 E1*") 
+    } | 
+    Select-Object Name, SamAccountName, UserPrincipalName, Enabled
