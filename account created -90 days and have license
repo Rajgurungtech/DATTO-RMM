@@ -1,0 +1,8 @@
+$createdThreshold = (Get-Date).AddDays(-180)
+$searchBase = "OU=Standards,OU=Users,OU=KDA,DC=kda,DC=intranet"
+
+Get-ADUser -SearchBase $searchBase `
+          -Filter { whenCreated -ge $createdThreshold } `
+          -Properties whenCreated, MemberOf | 
+    Where-Object { $_.MemberOf -like "*KDA-M365 E3*" } | 
+    Select-Object Name, SamAccountName, UserPrincipalName, whenCreated
